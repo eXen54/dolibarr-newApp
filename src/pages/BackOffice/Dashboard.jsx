@@ -105,16 +105,14 @@ export default function Dashboard() {
   const totalPayeG = genres.man.paye + genres.woman.paye;
   const maxGenre = Math.max(genres.man.du, genres.man.paye, genres.woman.du, genres.woman.paye, 1);
 
-  // --- Par mois : DÛ (par mois de début de période) et PAYÉ (par date de règlement) ---
+  // --- Par mois : référence = DATE DÉBUT du salaire (datesp) pour le dû ET le payé ---
   const parMois = {}; // key -> { du, paye }
   const ensureMonth = (k) => (parMois[k] ||= { du: 0, paye: 0 });
   salaries.forEach((s) => {
     const k = monthKey(s.datesp);
-    if (k !== "?") ensureMonth(k).du += Number(s.amount || 0);
-  });
-  payments.forEach((p) => {
-    const k = monthKey(p.datep);
-    if (k !== "?") ensureMonth(k).paye += Number(p.amount || 0);
+    if (k === "?") return;
+    ensureMonth(k).du += Number(s.amount || 0);
+    ensureMonth(k).paye += paidForSalary(payments, s.id); // règlements de ce salaire
   });
   const moisKeys = Object.keys(parMois).sort();
   const maxMois = Math.max(
@@ -211,7 +209,7 @@ export default function Dashboard() {
         <div className="bg-slate-900 p-8 rounded-[32px] text-white shadow-sm">
           <h3 className="text-lg font-black mb-1">Salaires dû / payé par mois</h3>
           <p className="text-sm text-slate-400">
-            Payé = date de règlement · Dû = mois de la fiche — cliquez un mois
+            Référence : date de début du salaire — cliquez un mois
           </p>
 
           {/* Totaux + légende */}
@@ -438,38 +436,48 @@ export default function Dashboard() {
 
       {detail?.type === "mois" && (
         <Modal
-          title={`Règlements — ${monthLabel(detail.key)}`}
+          title={`Salaires débutant en ${monthLabel(detail.key)}`}
           onClose={() => setDetail(null)}
         >
           <div className="grid grid-cols-2 gap-3 mb-5">
             <MiniStat label="Salaire dû (fiches du mois)" value={fmtMoney(parMois[detail.key]?.du)} />
-            <MiniStat label="Payé (règlements du mois)" value={fmtMoney(parMois[detail.key]?.paye)} />
+            <MiniStat label="Payé sur ces fiches" value={fmtMoney(parMois[detail.key]?.paye)} />
           </div>
-          <p className="text-sm font-bold text-slate-500 mb-3">Règlements du mois</p>
+          <p className="text-sm font-bold text-slate-500 mb-3">Fiches de salaire du mois</p>
           <table className="w-full text-sm rounded-2xl border border-slate-100 overflow-hidden">
             <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
               <tr>
-                <th className="text-left font-bold px-4 py-2.5">Date</th>
+                <th className="text-left font-bold px-4 py-2.5">Début</th>
                 <th className="text-left font-bold px-4 py-2.5">Employé</th>
-                <th className="text-left font-bold px-4 py-2.5">Mode</th>
                 <th className="text-right font-bold px-4 py-2.5">Montant</th>
+                <th className="text-right font-bold px-4 py-2.5">Payé</th>
+                <th className="text-right font-bold px-4 py-2.5">Reste</th>
               </tr>
             </thead>
             <tbody>
-              {payments
-                .filter((p) => monthKey(p.datep) === detail.key)
-                .map((p) => (
-                  <tr key={p.id} className="border-t border-slate-50">
-                    <td className="px-4 py-2.5 text-slate-500">{fmtDate(p.datep)}</td>
-                    <td className="px-4 py-2.5 font-semibold text-slate-700">
-                      {employeeName(salaryById[p.fk_salary]?.fk_user)}
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-500">
-                      {p.type_label || p.type_code || "—"}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-semibold">{fmtMoney(p.amount)}</td>
-                  </tr>
-                ))}
+              {salaries
+                .filter((s) => monthKey(s.datesp) === detail.key)
+                .map((s) => {
+                  const p = paidForSalary(payments, s.id);
+                  const r = Number(s.amount || 0) - p;
+                  return (
+                    <tr key={s.id} className="border-t border-slate-50">
+                      <td className="px-4 py-2.5 text-slate-500">{fmtDate(s.datesp)}</td>
+                      <td className="px-4 py-2.5 font-semibold text-slate-700">
+                        {employeeName(s.fk_user)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right">{fmtMoney(s.amount)}</td>
+                      <td className="px-4 py-2.5 text-right text-green-600">{fmtMoney(p)}</td>
+                      <td className="px-4 py-2.5 text-right font-semibold">
+                        {r <= 0 ? (
+                          <span className="text-green-600">Payé</span>
+                        ) : (
+                          <span className="text-orange-600">{fmtMoney(r)}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </Modal>
