@@ -90,7 +90,13 @@ export default function SalaryForm() {
           ? Math.floor(new Date(form.date_fin).getTime() / 1000)
           : undefined,
       });
-      setForm({ fk_user: "", label: "", amount: "", date_debut: monthStart(), date_fin: monthEnd() });
+      setForm({
+        fk_user: "",
+        label: "",
+        amount: "",
+        date_debut: monthStart(),
+        date_fin: monthEnd(),
+      });
       // Recharge la liste et ouvre directement le modal de paiement du nouveau salaire.
       const data = await load();
       const newSal = data.sal.find((s) => String(s.id) === String(id));
@@ -113,7 +119,9 @@ export default function SalaryForm() {
 
       {/* Formulaire de création */}
       <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm mb-8">
-        <h1 className="text-3xl font-black text-slate-900 mb-8">Nouveau salaire</h1>
+        <h1 className="text-3xl font-black text-slate-900 mb-8">
+          Nouveau salaire
+        </h1>
 
         {error && (
           <div className="bg-red-50 text-red-700 p-4 rounded-2xl mb-6 font-semibold text-sm">
@@ -124,7 +132,9 @@ export default function SalaryForm() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">Employé *</label>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                Employé *
+              </label>
               <select
                 value={form.fk_user}
                 onChange={(e) => onSelectEmployee(e.target.value)}
@@ -134,13 +144,18 @@ export default function SalaryForm() {
                 <option value="">— Choisir un employé —</option>
                 {employees.map((e) => (
                   <option key={e.id} value={e.id}>
-                    {(e.lastname ?? e.login) + " (" + genderLabel(e.gender) + ")"}
+                    {(e.lastname ?? e.login) +
+                      " (" +
+                      genderLabel(e.gender) +
+                      ")"}
                   </option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">Montant *</label>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                Montant *
+              </label>
               <input
                 type="number"
                 step="0.01"
@@ -154,7 +169,9 @@ export default function SalaryForm() {
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-slate-600 mb-2">Libellé</label>
+            <label className="block text-sm font-bold text-slate-600 mb-2">
+              Libellé
+            </label>
             <input
               value={form.label}
               onChange={(e) => set("label", e.target.value)}
@@ -165,7 +182,9 @@ export default function SalaryForm() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">Début de période</label>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                Début de période
+              </label>
               <input
                 type="date"
                 value={form.date_debut}
@@ -174,7 +193,9 @@ export default function SalaryForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">Fin de période</label>
+              <label className="block text-sm font-bold text-slate-600 mb-2">
+                Fin de période
+              </label>
               <input
                 type="date"
                 value={form.date_fin}
@@ -190,7 +211,7 @@ export default function SalaryForm() {
             className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all disabled:bg-slate-300"
           >
             <Save size={18} />
-            {saving ? "Création..." : "Créer et payer"}
+            {saving ? "Création..." : "Créer"}
           </button>
         </form>
       </div>
@@ -205,14 +226,19 @@ export default function SalaryForm() {
             <tr>
               <th className="text-left font-bold px-6 py-3">Employé</th>
               <th className="text-right font-bold px-6 py-3">Montant</th>
-              <th className="text-right font-bold px-6 py-3 hidden sm:table-cell">Reste</th>
+              <th className="text-right font-bold px-6 py-3 hidden sm:table-cell">
+                Reste
+              </th>
               <th className="text-right font-bold px-6 py-3">Action</th>
             </tr>
           </thead>
           <tbody>
             {salaries.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                <td
+                  colSpan={4}
+                  className="px-6 py-8 text-center text-slate-400"
+                >
                   Aucun salaire pour l'instant
                 </td>
               </tr>
@@ -229,23 +255,35 @@ export default function SalaryForm() {
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         {url ? (
-                          <img src={url} alt="" className="w-9 h-9 rounded-full object-cover" />
+                          <img
+                            src={url}
+                            alt=""
+                            className="w-9 h-9 rounded-full object-cover"
+                          />
                         ) : (
                           <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
                             <User size={16} />
                           </div>
                         )}
                         <span className="font-bold text-slate-700">
-                          {emp ? emp.lastname ?? emp.login : `Employé ${s.fk_user}`}
+                          {emp
+                            ? (emp.lastname ?? emp.login)
+                            : `Employé ${s.fk_user}`}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-3 text-right font-semibold">{fmtMoney(s.amount)}</td>
+                    <td className="px-6 py-3 text-right font-semibold">
+                      {fmtMoney(s.amount)}
+                    </td>
                     <td className="px-6 py-3 text-right hidden sm:table-cell">
                       {isPaid ? (
-                        <span className="text-green-600 font-semibold">Payé</span>
+                        <span className="text-green-600 font-semibold">
+                          Payé
+                        </span>
                       ) : (
-                        <span className="text-orange-600 font-semibold">{fmtMoney(r)}</span>
+                        <span className="text-orange-600 font-semibold">
+                          {fmtMoney(r)}
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-3 text-right">

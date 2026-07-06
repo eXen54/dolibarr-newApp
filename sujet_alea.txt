@@ -1,0 +1,23 @@
+creer une nouvelle page qui pour un mois donne(via un selcteur de date)
+calcul automatiquement le salaire du.
+en croisant les données: heure de travail,jours ferires, salaire,
+paiement
+
+Écran
+Sélecteur de mois (dropdown mois/année)
+Champ taux horaire (commun, avec override par employé possible — réutilise le pattern de GenerateSalaries)
+Toggle « Jours fériés payés » (oui/non)
+Tableau : Employé · Heures/sem · Jours ouvrés · Jours fériés du mois · Salaire théorique · Déjà payé · Écart
+Une ligne de totaux en bas
+Pourquoi c'est faisable en 1h par un dev intermédiaire
+Zéro nouveau backend : getEmployees(), getHolidays(), et les salaires existent déjà comme services.
+Le calcul est de l'arithmétique de dates pure côté client (compter les jours ouvrés d'un mois, retirer les fériés).
+Les patterns UI (tableau, filtres, override par modal, totaux) sont copiables depuis GenerateSalaries.jsx et Holidays.jsx.
+Une seule nouvelle route à ajouter dans App.jsx + une entrée de menu.
+
+Cœur métier (le seul vrai code à écrire)
+
+jours_ouvrés = joursOuvrables(mois) − fériésDuMois(holidays)
+heures_mois  = weeklyhours / 5 × jours_ouvrés     // hebdo → journalier
+salaire_dû   = heures_mois × taux_horaire
+écart        = salaire_dû − déjà_payé

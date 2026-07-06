@@ -1,2 +1,1 @@
--creation d'une interface avec laquelle l'application communique pour gere les donnes manuellment
--mihandle virgules
+3231
