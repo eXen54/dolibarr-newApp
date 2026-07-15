@@ -1,23 +1,20 @@
-creer une nouvelle page qui pour un mois donne(via un selcteur de date)
-calcul automatiquement le salaire du.
-en croisant les données: heure de travail,jours ferires, salaire,
-paiement
+ALEA:
+-On cree une nouvelle page qui genere les salaires avec les parametres:
+.mois et année. 
+.deux autres champs: 
+-salaire par jour
+-poucentage (majoration_jours_feries)
 
-Écran
-Sélecteur de mois (dropdown mois/année)
-Champ taux horaire (commun, avec override par employé possible — réutilise le pattern de GenerateSalaries)
-Toggle « Jours fériés payés » (oui/non)
-Tableau : Employé · Heures/sem · Jours ouvrés · Jours fériés du mois · Salaire théorique · Déjà payé · Écart
-Une ligne de totaux en bas
-Pourquoi c'est faisable en 1h par un dev intermédiaire
-Zéro nouveau backend : getEmployees(), getHolidays(), et les salaires existent déjà comme services.
-Le calcul est de l'arithmétique de dates pure côté client (compter les jours ouvrés d'un mois, retirer les fériés).
-Les patterns UI (tableau, filtres, override par modal, totaux) sont copiables depuis GenerateSalaries.jsx et Holidays.jsx.
-Une seule nouvelle route à ajouter dans App.jsx + une entrée de menu.
-
-Cœur métier (le seul vrai code à écrire)
-
-jours_ouvrés = joursOuvrables(mois) − fériésDuMois(holidays)
-heures_mois  = weeklyhours / 5 × jours_ouvrés     // hebdo → journalier
-salaire_dû   = heures_mois × taux_horaire
-écart        = salaire_dû − déjà_payé
+-pour selectionner les employées concernées on a le meme filtre d'employer que 
+dans fo/generer
+-on voit une liste d'employer selectionnée selon les filtres.
+-les jours qui n'ont pas de salaire on y genere un salaire.
+par exemple si on a un salaire 1000  avec interval 01/01/2026 a 10/01/2026
+si les parametres de la page est le mois de janvier 2026 avec un salaire par jour de 10
+donc on compte de 11/01/2026 au 31/01/2026 alors on genere un salaire de 10 * le nombre de jours de l'intervale restant pour tous les employées concernées. 
+et si on un jours feries le 15/01/2026 et le 21/01/2026 en plus (pour cet emplyer) et qu'on avait choisit un pourcentage de 30% de majoration
+pour ces deux jours donc on compte comme une majoration en plus soit(10+3) = 13
+-Enfin avevc un salaire par jour de 10 si on a salaire 1000  avec interval 01/01/2026 a 10/01/2026 et un autre salaire 500 avec interval 20/01/2026 a 25/01/2026
+donc la completion: on cree un salaire de 11/01/2026 a 19/01/2026 avec le montant du nombre de jour de cette intervalle fois le salaire par jour
+et 26/01/2026 a 31/01/2026 le montant du nombre de jour de cette intervalle fois le salaire par jour
+-c'est donc une completion de salaire selon le mois, avec un majoration pour les jours feries

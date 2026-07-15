@@ -12,6 +12,7 @@ import Salaries from "./pages/FrontOffice/Salaries";
 import SalaryForm from "./pages/FrontOffice/SalaryForm";
 import SalaryDetail from "./pages/FrontOffice/SalaryDetail";
 import GenerateSalaries from "./pages/FrontOffice/GenerateSalaries";
+import GenerateSalaries2 from "./pages/FrontOffice/GenerateSalaries2";
 import EmployeeList from "./pages/FrontOffice/EmployeeList";
 import EmployeeDetail from "./pages/FrontOffice/EmployeeDetail";
 
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="salaires/nouveau" element={<SalaryForm />} />
           <Route path="salaires/:id" element={<SalaryDetail />} />
           <Route path="generer" element={<GenerateSalaries />} />
+          <Route path="generer2" element={<GenerateSalaries2 />} />
           <Route path="employes" element={<EmployeeList />} />
           <Route path="employes/:id" element={<EmployeeDetail />} />
         </Route>

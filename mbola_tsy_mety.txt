@@ -1,0 +1,1 @@
+Get-ChildItem -Path "C:\Users\NEKENA\Documents\ITU\S6\EvalFarany\newapp-dolibarr" -Recurse -File | Where-Object { $_.LastWriteTime -gt (Get-Date).AddMinutes(-30) } | Sort-Object LastWriteTime -Descending | Select-Object LastWriteTime, FullName

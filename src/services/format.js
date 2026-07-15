@@ -69,6 +69,68 @@ export const paidForSalary = (payments, salaryId) =>
     .filter((p) => Number(p.fk_salary) === Number(salaryId))
     .reduce((s, p) => s + Number(p.amount || 0), 0);
 
+export const joursDuMois = (year, month) => {
+  const nbJours = new Date(year, month, 0).getDate();
+  const jours = [];
+  for (let d = 1; d <= nbJours; d++) {
+    jours.push(
+      `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`,
+    );
+  }
+  return jours;
+};
+// Un timestamp Dolibarr (secondes) -> numéro de jour civil, robuste au décalage
+// de fuseau du serveur Dolibarr (qui peut renvoyer 23:00 la veille au lieu de
+// minuit). On arrondit au jour le plus proche avant de compter les jours.
+const jourNumero = (ts) => Math.round(Number(ts) / 86400);
+
+export const salaireCouvreJour = (salaire, jourISO) => {
+  const [y, m, d] = jourISO.split("-").map(Number);
+  const jour = jourNumero(Math.floor(Date.UTC(y, m - 1, d) / 1000));
+  const debut = Number(salaire.datesp);
+  const fin = Number(salaire.dateep);
+  if (!debut || !fin) {
+    return false;
+  }
+  // Le jour de fin d'un salaire existant est couvert : la complétion reprend
+  // le lendemain (borne inclusive).
+  return jour >= jourNumero(debut) && jour <= jourNumero(fin);
+};
+export const segmentsManquants = (year, month, salairesEmploye) => {
+  const jours = joursDuMois(year, month);
+  const manquants = jours.filter(
+    (j) => !salairesEmploye.some((s) => salaireCouvreJour(s, j)),
+  );
+
+  const segments = [];
+  let courant = null;
+  for (const j of manquants) {
+    if (courant && new Date(j) - new Date(courant.fin) === 86400000) {
+      courant.fin = j;
+      courant.jours.push(j);
+    } else {
+      courant = { debut: j, fin: j, jours: [j] };
+      segments.push(courant);
+    }
+  }
+  return segments;
+};
+export const montantSegment = (
+  segment,
+  tarifJour,
+  pourcentageMajoration,
+  joursFeriesISO,
+) => {
+  const feries = new Set(joursFeriesISO);
+  let montant = 0;
+  for (const j of segment.jours) {
+    montant += feries.has(j)
+      ? tarifJour * (1 + Number(pourcentageMajoration || 0) / 100)
+      : tarifJour;
+  }
+  return Math.round(montant * 100) / 100;
+};
+
 // URL de la photo d'un employé (servie par notre API, via le serveur Vite).
 export const photoUrl = (employee) =>
   employee?.photo ? `/api/photo/${employee.id}` : null;

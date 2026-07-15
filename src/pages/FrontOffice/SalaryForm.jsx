@@ -17,6 +17,11 @@ import {
 } from "../../services/format.js";
 import PaymentModal from "../../components/PaymentModal.jsx";
 
+const toTs = (d) => {
+  const [y, m, day] = d.split("-").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, day) / 1000);
+};
+
 export default function SalaryForm() {
   const [employees, setEmployees] = useState([]);
   const [salaries, setSalaries] = useState([]);
@@ -83,12 +88,8 @@ export default function SalaryForm() {
         fk_user: Number(form.fk_user),
         label: form.label || `Salaire ${emp?.lastname ?? ""}`.trim(),
         amount: Number(form.amount),
-        datesp: form.date_debut
-          ? Math.floor(new Date(form.date_debut).getTime() / 1000)
-          : undefined,
-        dateep: form.date_fin
-          ? Math.floor(new Date(form.date_fin).getTime() / 1000)
-          : undefined,
+        datesp: form.date_debut ? toTs(form.date_debut) : undefined,
+        dateep: form.date_fin ? toTs(form.date_fin) : undefined,
       });
       setForm({
         fk_user: "",

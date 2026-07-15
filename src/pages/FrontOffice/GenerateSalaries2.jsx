@@ -9,9 +9,21 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import { getEmployees, createSalary } from "../../services/backoffice/dolibarr.js";
-import { genderLabel, photoUrl, monthStart, monthEnd } from "../../services/format.js";
+import {
+  getEmployees,
+  createSalary,
+  getSalaries,
+} from "../../services/backoffice/dolibarr.js";
+import {
+  genderLabel,
+  photoUrl,
+  monthStart,
+  monthEnd,
+  segmentsManquants,
+  montantSegment,
+} from "../../services/format.js";
 import Modal from "../../components/Modal.jsx";
+import { getHolidays } from "../../services/holidays.js";
 
 const toTs = (d) => {
   if (!d) return undefined;
@@ -22,6 +34,9 @@ const toTs = (d) => {
 export default function GenerateSalaries() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [salaries, setSalaries] = useState([]);
+  const [holidays, setHolidays] = useState([]);
+  // const [loading, setLoading] = useState(true);
 
   // Filtres
   const [poste, setPoste] = useState("");
@@ -29,27 +44,35 @@ export default function GenerateSalaries() {
   const [hMin, setHMin] = useState("");
   const [hMax, setHMax] = useState("");
 
+  const now = new Date();
+  const [annee, setAnnee] = useState(now.getFullYear());
+  const [mois, setMois] = useState(now.getMonth() + 1);
+  const [tarifJour, setTarifJour] = useState("");
+  const [pourcentage, setPourcentage] = useState("");
+
+  // const [running, setRunning] = useState(false);
+  // const [progress, setProgress] = useState({ current: 0, total: 0 });
+  // const [result, setResult] = useState(null);
+
   // Sélection + personnalisations par salarié
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [overrides, setOverrides] = useState({}); // { [empId]: { montant, date_debut, date_fin } }
   const [modalEmp, setModalEmp] = useState(null);
-  const [modalForm, setModalForm] = useState({ montant: "", date_debut: "", date_fin: "" });
-
-  // Valeurs communes — dates pré-remplies avec la période du mois courant (modifiables).
-  const [form, setForm] = useState({
-    date_debut: monthStart(),
-    date_fin: monthEnd(),
-    montant: "",
-  });
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [result, setResult] = useState(null);
 
   useEffect(() => {
-    getEmployees()
-      .then(setEmployees)
+    Promise.all([getEmployees(), getSalaries(), getHolidays()])
+      .then(([emp, sal, hol]) => {
+        setEmployees(emp);
+        setSalaries(sal);
+        setHolidays(hol);
+      })
       .finally(() => setLoading(false));
   }, []);
+
+  const joursFeriesIso = useMemo(() => holidays.map((h) => h.date), [holidays]);
 
   const postes = useMemo(
     () => [...new Set(employees.map((e) => e.job).filter(Boolean))].sort(),
@@ -84,9 +107,49 @@ export default function GenerateSalaries() {
       return next;
     });
 
-  const allSelected = filtered.length > 0 && filtered.every((e) => selectedIds.has(e.id));
+  const allSelected =
+    filtered.length > 0 && filtered.every((e) => selectedIds.has(e.id));
   const toggleAll = () =>
-    setSelectedIds(allSelected ? new Set() : new Set(filtered.map((e) => e.id)));
+    setSelectedIds(
+      allSelected ? new Set() : new Set(filtered.map((e) => e.id)),
+    );
+
+  const apercu = useMemo(() => {
+    if (!tarifJour) return [];
+    return selectedEmployees.map((e) => {
+      const salairesEmploye = salaries.filter(
+        (s) => Number(s.fk_user) === Number(e.id),
+      );
+      const segments = segmentsManquants(
+        Number(annee),
+        Number(mois),
+        salairesEmploye,
+      );
+      return {
+        emp: e,
+        segments: segments.map((seg) => ({
+          ...seg,
+          montant: montantSegment(
+            seg,
+            Number(tarifJour),
+            Number(pourcentage),
+            joursFeriesIso,
+          ),
+        })),
+      };
+    });
+  }, [
+    selectedEmployees,
+    salaries,
+    annee,
+    mois,
+    tarifJour,
+    pourcentage,
+    joursFeriesIso,
+  ]);
+
+  const totalSegments = apercu.reduce((s, a) => s + a.segments.length, 0);
+  const canGenerate = tarifJour && totalSegments;
 
   // Valeurs effectives = override du salarié sinon valeur commune.
   const effMontant = (id) => overrides[id]?.montant || form.montant;
@@ -118,13 +181,18 @@ export default function GenerateSalaries() {
     setModalEmp(null);
   };
 
-  const canGenerate =
-    selectedEmployees.length > 0 && selectedEmployees.every((e) => effMontant(e.id));
+  // const canGenerate =
+  //   selectedEmployees.length > 0 &&
+  //   selectedEmployees.every((e) => effMontant(e.id));
 
   const handleGenerate = async (e) => {
     e.preventDefault();
     if (!canGenerate) return;
-    if (!window.confirm(`Générer un salaire pour ${selectedEmployees.length} salarié(s) ?`))
+    if (
+      !window.confirm(
+        `Générer un salaire pour ${selectedEmployees.length} salarié(s) ?`,
+      )
+    )
       return;
 
     setRunning(true);
@@ -133,21 +201,24 @@ export default function GenerateSalaries() {
 
     let created = 0;
     const errors = [];
-    for (let i = 0; i < selectedEmployees.length; i++) {
-      const emp = selectedEmployees[i];
-      try {
-        await createSalary({
-          fk_user: Number(emp.id),
-          label: `Salaire ${emp.lastname ?? emp.login}`,
-          amount: Number(effMontant(emp.id)),
-          datesp: toTs(effDebut(emp.id)),
-          dateep: toTs(effFin(emp.id)),
-        });
-        created++;
-      } catch (err) {
-        errors.push(`${emp.lastname ?? emp.login} : ${err.message}`);
+    let i = 0;
+    for (const { emp, segments } of apercu) {
+      for (const seg of segments) {
+        try {
+          await createSalary({
+            fk_user: Number(emp.id),
+            label: `Salaire ${emp.lastname ?? emp.login}`,
+            amount: seg.montant,
+            datesp: toTs(seg.debut),
+            dateep: toTs(seg.fin),
+          });
+          created++;
+        } catch (error) {
+          console.log("erreur be");
+        }
+        i++;
+        setProgress({ current: i, total: totalSegments });
       }
-      setProgress({ current: i + 1, total: selectedEmployees.length });
     }
     setResult({ created, failed: errors.length });
     setRunning(false);
@@ -183,7 +254,9 @@ export default function GenerateSalaries() {
           >
             <option value="">Tous les postes</option>
             {postes.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>
+                {p}
+              </option>
             ))}
           </select>
           <select
@@ -215,7 +288,8 @@ export default function GenerateSalaries() {
         <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-slate-500 flex items-center gap-2">
-              <Users size={16} /> {selectedEmployees.length} / {filtered.length} sélectionné(s)
+              <Users size={16} /> {selectedEmployees.length} / {filtered.length}{" "}
+              sélectionné(s)
             </p>
             {filtered.length > 0 && (
               <button
@@ -230,7 +304,9 @@ export default function GenerateSalaries() {
           {loading ? (
             <Loader2 size={24} className="text-blue-600 animate-spin" />
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-slate-400">Aucun salarié pour ces filtres.</p>
+            <p className="text-sm text-slate-400">
+              Aucun salarié pour ces filtres.
+            </p>
           ) : (
             <div className="max-h-72 overflow-y-auto rounded-2xl border border-slate-100 divide-y divide-slate-50">
               {filtered.map((e) => {
@@ -242,11 +318,22 @@ export default function GenerateSalaries() {
                     key={e.id}
                     className={`flex items-center gap-3 px-4 py-2.5 ${checked ? "bg-blue-50/40" : ""}`}
                   >
-                    <button onClick={() => toggle(e.id)} className="text-blue-600 shrink-0">
-                      {checked ? <CheckSquare size={20} /> : <Square size={20} className="text-slate-300" />}
+                    <button
+                      onClick={() => toggle(e.id)}
+                      className="text-blue-600 shrink-0"
+                    >
+                      {checked ? (
+                        <CheckSquare size={20} />
+                      ) : (
+                        <Square size={20} className="text-slate-300" />
+                      )}
                     </button>
                     {url ? (
-                      <img src={url} alt="" className="w-8 h-8 rounded-full object-cover" />
+                      <img
+                        src={url}
+                        alt=""
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
                     ) : (
                       <span className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-400">
                         <User size={14} />
@@ -257,7 +344,8 @@ export default function GenerateSalaries() {
                         {e.lastname ?? e.login}
                       </p>
                       <p className="text-xs text-slate-400">
-                        {genderLabel(e.gender)} · {e.job || "—"} · {e.weeklyhours || "?"} h
+                        {genderLabel(e.gender)} · {e.job || "—"} ·{" "}
+                        {e.weeklyhours || "?"} h
                       </p>
                     </div>
                     {hasOverride && (
@@ -282,152 +370,75 @@ export default function GenerateSalaries() {
           )}
         </div>
       </div>
+      <div>
+        COucou
+        <h1>Parametres</h1>
+        <div>
+          <select
+            name=""
+            id=""
+            value={mois}
+            onChange={(e) => setMois(Number(e.target.value))}
+          >
+            {Array.from({ length: 12 }, (__, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {new Date(2000, m - 1, 1).toLocaleDateString("fr-FR", {
+                  month: "long",
+                })}
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            value={annee}
+            onChange={(e) => setAnnee(Number(e.target.value))}
+            placeholder="Annee"
+          />
+          <input
+            type="number"
+            step="0.01"
+            value={tarifJour}
+            onChange={(e) => setTarifJour(Number(e.target.value))}
+            placeholder="Tarif jour"
+          />
+          <input
+            type="number"
+            step="0.01"
+            value={pourcentage}
+            onChange={(e) => setPourcentage(Number(e.target.value))}
+            placeholder="pourcentage"
+          />
 
-      {/* Valeurs communes + génération */}
-      <form
-        onSubmit={handleGenerate}
-        className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm"
-      >
-        <h2 className="text-sm font-black text-slate-700 uppercase tracking-wider mb-1">
-          2. Salaire commun
-        </h2>
-        <p className="text-xs text-slate-400 mb-4">
-          Appliqué à chaque salarié, sauf ceux personnalisés (badge « perso »).
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">Date début</label>
-            <input
-              type="date"
-              value={form.date_debut}
-              onChange={(e) => setForm({ ...form, date_debut: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">Date fin</label>
-            <input
-              type="date"
-              value={form.date_fin}
-              onChange={(e) => setForm({ ...form, date_fin: e.target.value })}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-slate-500 mb-1">Montant commun</label>
-            <input
-              type="number"
-              step="0.01"
-              value={form.montant}
-              onChange={(e) => setForm({ ...form, montant: e.target.value })}
-              placeholder="0.00"
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-            />
-          </div>
-        </div>
-
-        {running && (
-          <div className="mb-4">
-            <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-200"
-                style={{ width: `${(progress.current / progress.total) * 100}%` }}
-              />
-            </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {progress.current} / {progress.total}
-            </p>
-          </div>
-        )}
-
-        {result && (
-          <div className="mb-4 p-4 rounded-2xl bg-green-50 text-green-800 flex items-center gap-3 font-bold">
-            <CheckCircle2 size={20} />
-            {result.created} salaire(s) généré(s)
-            {result.failed ? ` — ${result.failed} échec(s)` : ""}
-          </div>
-        )}
-
-        {!canGenerate && selectedEmployees.length > 0 && (
-          <p className="text-xs font-semibold text-orange-600 mb-3">
-            Renseignez un montant commun ou personnalisez chaque salarié sélectionné.
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={running || !canGenerate}
-          className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-black transition-all disabled:bg-slate-300"
-        >
-          <Zap size={18} />
-          {running
-            ? "Génération..."
-            : `Générer le salaire pour ${selectedEmployees.length} salarié(s)`}
-        </button>
-      </form>
-
-      {/* Modal de personnalisation d'un salarié */}
-      {modalEmp && (
-        <Modal
-          title={`Personnaliser — ${modalEmp.lastname ?? modalEmp.login}`}
-          onClose={() => setModalEmp(null)}
-          maxWidth="max-w-md"
-        >
-          <p className="text-sm text-slate-400 mb-4">
-            Laissez un champ vide pour utiliser la valeur commune.
-          </p>
-          <form onSubmit={saveOverride} className="space-y-4">
-            <div>
-              <label className="block text-sm font-bold text-slate-600 mb-2">Montant</label>
-              <input
-                type="number"
-                step="0.01"
-                value={modalForm.montant}
-                onChange={(e) => setModalForm({ ...modalForm, montant: e.target.value })}
-                placeholder={form.montant ? `commun : ${form.montant}` : "0.00"}
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+          <form action="" onSubmit={handleGenerate}>
+            <h1>Genreation anle izy</h1>
+            {apercu
+              .filter((a) => a.segments.length > 0)
+              .map((a) => (
+                <div>
+                  <p>zay</p>
+                  <p>{a.emp.lastname ?? a.emp.login}</p>
+                  {a.segments.map((seg, i) => (
+                    <p>
+                      {seg.debut} -{seg.fin} : {seg.montant}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            {running && (
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">Date début</label>
-                <input
-                  type="date"
-                  value={modalForm.date_debut}
-                  onChange={(e) => setModalForm({ ...modalForm, date_debut: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-                />
+                <div></div>
               </div>
+            )}
+            {result && (
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-2">Date fin</label>
-                <input
-                  type="date"
-                  value={modalForm.date_fin}
-                  onChange={(e) => setModalForm({ ...modalForm, date_fin: e.target.value })}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:border-slate-900"
-                />
+                <div>{result.created} saalire generes</div>
+                <div>{result.failed} saalire echec</div>
               </div>
-            </div>
-            <div className="flex gap-3 pt-2">
-              {overrides[modalEmp.id] && (
-                <button
-                  type="button"
-                  onClick={clearOverride}
-                  className="px-4 py-3 rounded-2xl font-bold text-slate-500 bg-slate-100 hover:bg-slate-200"
-                >
-                  Réinitialiser
-                </button>
-              )}
-              <button
-                type="submit"
-                className="flex-1 bg-slate-900 text-white py-3 rounded-2xl font-bold hover:bg-black transition-all"
-              >
-                Enregistrer
-              </button>
-            </div>
+            )}
+            <button type="submit">Confirmer</button>
           </form>
-        </Modal>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

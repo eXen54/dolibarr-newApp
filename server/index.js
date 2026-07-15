@@ -46,7 +46,9 @@ app.post("/api/holidays", (req, res) => {
   const info = db
     .prepare("INSERT INTO holidays (label, date) VALUES (?, ?)")
     .run(label, date);
-  const row = db.prepare("SELECT * FROM holidays WHERE id = ?").get(info.lastInsertRowid);
+  const row = db
+    .prepare("SELECT * FROM holidays WHERE id = ?")
+    .get(info.lastInsertRowid);
   res.status(201).json(row);
 });
 
@@ -57,7 +59,9 @@ app.put("/api/holidays/:id", (req, res) => {
     date,
     req.params.id,
   );
-  const row = db.prepare("SELECT * FROM holidays WHERE id = ?").get(req.params.id);
+  const row = db
+    .prepare("SELECT * FROM holidays WHERE id = ?")
+    .get(req.params.id);
   res.json(row);
 });
 
@@ -140,7 +144,9 @@ app.post("/api/import-photos", async (req, res) => {
 app.get("/api/photo/:userId", (req, res) => {
   const dir = join(DOLI_DOC_ROOT, "users", String(req.params.userId), "photos");
   if (!existsSync(dir)) return res.status(404).end();
-  const images = readdirSync(dir).filter((f) => /\.(png|jpe?g|gif|webp)$/i.test(f));
+  const images = readdirSync(dir).filter((f) =>
+    /\.(png|jpe?g|gif|webp)$/i.test(f),
+  );
   if (images.length === 0) return res.status(404).end();
   res.sendFile(join(dir, images[0]));
 });

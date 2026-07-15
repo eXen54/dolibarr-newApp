@@ -57,16 +57,40 @@ export const FO_Navbar = () => {
       </Link>
 
       <nav className="flex flex-col gap-1">
-        <NavLink to="/fo/salaires" icon={Wallet} exact activeClass="bg-blue-600 text-white shadow-soft">
+        <NavLink
+          to="/fo/salaires"
+          icon={Wallet}
+          exact
+          activeClass="bg-blue-600 text-white shadow-soft"
+        >
           Salaires
         </NavLink>
-        <NavLink to="/fo/salaires/nouveau" icon={Plus} activeClass="bg-blue-600 text-white shadow-soft">
+        <NavLink
+          to="/fo/salaires/nouveau"
+          icon={Plus}
+          activeClass="bg-blue-600 text-white shadow-soft"
+        >
           Nouveau
         </NavLink>
-        <NavLink to="/fo/generer" icon={Zap} activeClass="bg-blue-600 text-white shadow-soft">
+        <NavLink
+          to="/fo/generer"
+          icon={Zap}
+          activeClass="bg-blue-600 text-white shadow-soft"
+        >
           Génération
         </NavLink>
-        <NavLink to="/fo/employes" icon={Users} activeClass="bg-blue-600 text-white shadow-soft">
+        <NavLink
+          to="/fo/generer2"
+          icon={Zap}
+          activeClass="bg-blue-600 text-white shadow-soft"
+        >
+          Génération Alea
+        </NavLink>
+        <NavLink
+          to="/fo/employes"
+          icon={Users}
+          activeClass="bg-blue-600 text-white shadow-soft"
+        >
           Salariés
         </NavLink>
       </nav>
@@ -94,7 +118,10 @@ export const BO_Navbar = () => {
 
   return (
     <Shell>
-      <Link to="/bo/dashboard" className="group mb-6 flex items-center gap-3 px-2 py-2">
+      <Link
+        to="/bo/dashboard"
+        className="group mb-6 flex items-center gap-3 px-2 py-2"
+      >
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-900 text-white shadow-soft transition-transform group-hover:scale-105">
           <LayoutDashboard size={20} />
         </div>
@@ -104,19 +131,39 @@ export const BO_Navbar = () => {
       </Link>
 
       <nav className="flex flex-col gap-1">
-        <NavLink to="/bo/dashboard" icon={LayoutDashboard} activeClass="bg-slate-900 text-white shadow-soft">
+        <NavLink
+          to="/bo/dashboard"
+          icon={LayoutDashboard}
+          activeClass="bg-slate-900 text-white shadow-soft"
+        >
           Dashboard
         </NavLink>
-        <NavLink to="/bo/import" icon={FileUp} activeClass="bg-slate-900 text-white shadow-soft">
+        <NavLink
+          to="/bo/import"
+          icon={FileUp}
+          activeClass="bg-slate-900 text-white shadow-soft"
+        >
           Importation
         </NavLink>
-        <NavLink to="/bo/jours-feries" icon={CalendarDays} activeClass="bg-slate-900 text-white shadow-soft">
+        <NavLink
+          to="/bo/jours-feries"
+          icon={CalendarDays}
+          activeClass="bg-slate-900 text-white shadow-soft"
+        >
           Jours fériés
         </NavLink>
-        <NavLink to="/bo/theme" icon={Palette} activeClass="bg-slate-900 text-white shadow-soft">
+        <NavLink
+          to="/bo/theme"
+          icon={Palette}
+          activeClass="bg-slate-900 text-white shadow-soft"
+        >
           Thème
         </NavLink>
-        <NavLink to="/bo/reset" icon={RefreshCcw} activeClass="bg-slate-900 text-white shadow-soft">
+        <NavLink
+          to="/bo/reset"
+          icon={RefreshCcw}
+          activeClass="bg-slate-900 text-white shadow-soft"
+        >
           Reset
         </NavLink>
       </nav>
